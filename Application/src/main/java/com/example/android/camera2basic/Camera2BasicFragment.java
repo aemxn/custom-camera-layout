@@ -64,6 +64,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
 import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 
@@ -250,6 +251,7 @@ public class Camera2BasicFragment extends Fragment
      * This is the output file for our picture.
      */
     private File mFile;
+    private List<File> mFileArr;
 
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
@@ -260,6 +262,7 @@ public class Camera2BasicFragment extends Fragment
 
         @Override
         public void onImageAvailable(ImageReader reader) {
+            Log.d(TAG, "onImageAvailable");
             mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
         }
 
@@ -463,13 +466,12 @@ public class Camera2BasicFragment extends Fragment
         view.findViewById(R.id.add_picture).setOnClickListener(this);
         view.findViewById(R.id.retake_picture).setOnClickListener(this);
         view.findViewById(R.id.btn_check).setOnClickListener(this);
+        mFileArr = new ArrayList<>();
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        long unixTime = System.currentTimeMillis() / 1000L;
-        mFile = new File(getActivity().getExternalFilesDir(null), "pic_" + unixTime + ".jpg");
     }
 
     @Override
@@ -862,6 +864,10 @@ public class Camera2BasicFragment extends Fragment
      */
     private void captureStillPicture() {
         Log.i(TAG, "captureStillPicture");
+        long unixTime = System.currentTimeMillis() / 1000L;
+        Log.d(TAG, "captureStillPicture file: " + unixTime);
+        mFile = new File(getActivity().getExternalFilesDir(null), "pic_" + unixTime + ".jpg");
+
         try {
             final Activity activity = getActivity();
             if (null == activity || null == mCameraDevice) {
@@ -883,8 +889,7 @@ public class Camera2BasicFragment extends Fragment
             Log.i(TAG, "orientation: " + getOrientation(rotation));
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation));
 
-            CameraCaptureSession.CaptureCallback CaptureCallback
-                    = new CameraCaptureSession.CaptureCallback() {
+            CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback() {
 
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
@@ -900,14 +905,7 @@ public class Camera2BasicFragment extends Fragment
                         @Override
                         public void run() {
                             // make preview layout available
-                            mPreviewImage.setVisibility(View.VISIBLE);
-                            mPreviewText.setVisibility(View.VISIBLE);
-                            mTextureView.setVisibility(View.GONE);
-                            mButtonSnap.setVisibility(View.INVISIBLE);
-                            mButtonAdd.setVisibility(View.VISIBLE);
-                            mButtonRetake.setVisibility(View.VISIBLE);
-                            mCloseButton.setVisibility(View.INVISIBLE);
-                            mCheckButton.setVisibility(View.VISIBLE);
+                            initPreviewLayout();
                             // load using picasso with custom config
                             final int MAX_WIDTH = 1024;
                             final int MAX_HEIGHT = 768;
@@ -937,6 +935,9 @@ public class Camera2BasicFragment extends Fragment
                                     options.inPreferredConfig = Bitmap.Config.RGB_565;
                                     options.inDither = true;
 
+                                    // add newly captured image to an array
+                                    mFileArr.add(mFile);
+
                                     Bitmap cropImage = BitmapFactory.decodeFile(mFile.getPath(), options);
                                     int heightOffset = (int) (cropImage.getHeight() * CROP_OFFSET_HEIGHT);
                                     final Bitmap croppedBitmap = Bitmap.createBitmap(
@@ -944,13 +945,8 @@ public class Camera2BasicFragment extends Fragment
                                             (int) (cropImage.getHeight() * CROP_OFFSET_Y), cropImage.getWidth(),
                                             heightOffset);
                                     mPreviewHalf.setImageBitmap(croppedBitmap);
-                                    mPreviewText.setVisibility(View.GONE);
-                                    mPreviewImage.setVisibility(View.GONE);
-                                    mTextureView.setVisibility(View.VISIBLE);
-                                    mButtonSnap.setVisibility(View.VISIBLE);
-                                    mButtonAdd.setVisibility(View.INVISIBLE);
-                                    mButtonRetake.setVisibility(View.INVISIBLE);
-                                    mCloseButton.setVisibility(View.VISIBLE);
+                                    // re-init snap layout (with bottom-half preview)
+                                    initSnapLayout();
                                 }
                             });
                         }
@@ -965,12 +961,26 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
-//    private void startPreviewActivity(File mFile) {
-//        Intent i = new Intent(getActivity(), PreviewActivity.class);
-//        i.putExtra("capture_image", mFile.toString());
-//        getActivity().startActivity(i);
-//        closeCamera();
-//    }
+    private void initPreviewLayout() {
+        mPreviewImage.setVisibility(View.VISIBLE);
+        mPreviewText.setVisibility(View.VISIBLE);
+        mTextureView.setVisibility(View.GONE);
+        mButtonSnap.setVisibility(View.INVISIBLE);
+        mButtonAdd.setVisibility(View.VISIBLE);
+        mButtonRetake.setVisibility(View.VISIBLE);
+        mCloseButton.setVisibility(View.INVISIBLE);
+        mCheckButton.setVisibility(View.VISIBLE);
+    }
+
+    private void initSnapLayout() {
+        mPreviewText.setVisibility(View.GONE);
+        mPreviewImage.setVisibility(View.GONE);
+        mTextureView.setVisibility(View.VISIBLE);
+        mButtonSnap.setVisibility(View.VISIBLE);
+        mButtonAdd.setVisibility(View.INVISIBLE);
+        mButtonRetake.setVisibility(View.INVISIBLE);
+        mCloseButton.setVisibility(View.VISIBLE);
+    }
 
     /**
      * Retrieves the JPEG orientation from the specified screen rotation.
@@ -1016,12 +1026,12 @@ public class Camera2BasicFragment extends Fragment
                 break;
             }
             case R.id.retake_picture: {
-                // todo remove previous image instance, open camera
-                Toast.makeText(getActivity(), "Retake picture", Toast.LENGTH_SHORT).show();
+                initSnapLayout();
                 break;
             }
             case R.id.btn_check: {
-                // todo save images in this instance, close activity
+                Log.d(TAG, new Gson().toJson(mFileArr));
+                Log.d(TAG, "filearr size: " + mFileArr.size());
                 getActivity().onBackPressed();
                 break;
             }

@@ -22,6 +22,7 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.0.0'
 
     compile 'com.squareup.picasso:picasso:2.5.2'
+    compile 'com.google.code.gson:gson:2.4'
 }
 
 // The sample build uses multiple directories to
