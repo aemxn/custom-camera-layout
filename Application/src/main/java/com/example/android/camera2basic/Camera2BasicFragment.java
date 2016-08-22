@@ -59,6 +59,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -188,6 +189,9 @@ public class Camera2BasicFragment extends Fragment
     private ImageView mCheckButton;
     private ImageView mPreviewImage;
     private ImageView mPreviewHalf;
+    private Button mButtonSnap;
+    private Button mButtonAdd;
+    private Button mButtonRetake;
 
     /**
      * The {@link android.util.Size} of camera preview.
@@ -445,20 +449,27 @@ public class Camera2BasicFragment extends Fragment
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
-        view.findViewById(R.id.picture).setOnClickListener(this);
-        view.findViewById(R.id.info).setOnClickListener(this);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
         mPreviewText = (TextView) view.findViewById(R.id.tv_preview);
         mCloseButton = (ImageView) view.findViewById(R.id.btn_close);
         mCheckButton = (ImageView) view.findViewById(R.id.btn_check);
         mPreviewImage = (ImageView) view.findViewById(R.id.iv_preview);
         mPreviewHalf = (ImageView) view.findViewById(R.id.iv_preview_half);
+        mButtonSnap = (Button) view.findViewById(R.id.snap_picture);
+        mButtonAdd = (Button) view.findViewById(R.id.add_picture);
+        mButtonRetake = (Button) view.findViewById(R.id.retake_picture);
+        view.findViewById(R.id.snap_picture).setOnClickListener(this);
+        view.findViewById(R.id.btn_close).setOnClickListener(this);
+        view.findViewById(R.id.add_picture).setOnClickListener(this);
+        view.findViewById(R.id.retake_picture).setOnClickListener(this);
+        view.findViewById(R.id.btn_check).setOnClickListener(this);
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        mFile = new File(getActivity().getExternalFilesDir(null), "pic.jpg");
+        long unixTime = System.currentTimeMillis() / 1000L;
+        mFile = new File(getActivity().getExternalFilesDir(null), "pic_" + unixTime + ".jpg");
     }
 
     @Override
@@ -842,6 +853,9 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
+    private static final double CROP_OFFSET_Y = 0.8;
+    private static final double CROP_OFFSET_HEIGHT = 0.2;
+
     /**
      * Capture a still picture. This method should be called when we get a response in
      * {@link #mCaptureCallback} from both {@link #lockFocus()}.
@@ -880,63 +894,67 @@ public class Camera2BasicFragment extends Fragment
                     showToast("Saved: " + mFile);
                     Log.d(TAG, mFile.toString());
                     unlockFocus();
-//                    startPreviewActivity(mFile);
+
+                    /** start preview image */
                     getActivity().runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             // make preview layout available
                             mPreviewImage.setVisibility(View.VISIBLE);
+                            mPreviewText.setVisibility(View.VISIBLE);
+                            mTextureView.setVisibility(View.GONE);
+                            mButtonSnap.setVisibility(View.INVISIBLE);
+                            mButtonAdd.setVisibility(View.VISIBLE);
+                            mButtonRetake.setVisibility(View.VISIBLE);
+                            mCloseButton.setVisibility(View.INVISIBLE);
+                            mCheckButton.setVisibility(View.VISIBLE);
                             // load using picasso with custom config
                             final int MAX_WIDTH = 1024;
                             final int MAX_HEIGHT = 768;
-                            int size = (int) Math.ceil(Math.sqrt(MAX_WIDTH * MAX_HEIGHT));
+                            final int size = (int) Math.ceil(Math.sqrt(MAX_WIDTH * MAX_HEIGHT));
+                            final Handler handler = new Handler();
                             // Loads given image
-                            Picasso.with(getActivity())
-                                    .load(mFile)
-                                    .transform(new BitmapTransform(MAX_WIDTH, MAX_HEIGHT))
-                                    .memoryPolicy(MemoryPolicy.NO_STORE)
-                                    .resize(size, size)
-                                    .centerInside()
-                                    .into(mPreviewImage);
-
-                            final Bitmap toBeCropped = BitmapFactory.decodeFile(mFile.getPath());
-                            final int fromHere = (int) (toBeCropped.getHeight() * 0.2);
-                            Log.i(TAG, "fromHere: " + fromHere);
-                            final BitmapFactory.Options bitmapOptions=new BitmapFactory.Options();
-                            bitmapOptions.inTargetDensity = 1;
-                            toBeCropped.setDensity(Bitmap.DENSITY_NONE);
-
-                            mPreviewText.setVisibility(View.VISIBLE);
-                            mTextureView.setVisibility(View.GONE);
-                            mCloseButton.setOnClickListener(new View.OnClickListener() {
+                            handler.postDelayed(new Runnable() {
                                 @Override
-                                public void onClick(View v) {
-                                    Toast.makeText(getActivity(), "Close button", Toast.LENGTH_SHORT).show();
+                                public void run() {
+                                    Picasso.with(getActivity())
+                                            .load(mFile)
+                                            .transform(new BitmapTransform(MAX_WIDTH, MAX_HEIGHT))
+                                            .memoryPolicy(MemoryPolicy.NO_STORE)
+                                            .resize(size, size)
+                                            .centerInside()
+                                            .into(mPreviewImage);
                                 }
-                            });
-                            mCheckButton.setOnClickListener(new View.OnClickListener() {
+                            }, 500);
+
+                            mButtonAdd.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
+                                    mPreviewHalf.setVisibility(View.VISIBLE);
+                                    // optimizing cropImage image loading
+                                    final BitmapFactory.Options options = new BitmapFactory.Options();
+                                    options.inJustDecodeBounds = false;
+                                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                                    options.inDither = true;
+
+                                    Bitmap cropImage = BitmapFactory.decodeFile(mFile.getPath(), options);
+                                    int heightOffset = (int) (cropImage.getHeight() * CROP_OFFSET_HEIGHT);
+                                    final Bitmap croppedBitmap = Bitmap.createBitmap(
+                                            cropImage, 0,
+                                            (int) (cropImage.getHeight() * CROP_OFFSET_Y), cropImage.getWidth(),
+                                            heightOffset);
+                                    mPreviewHalf.setImageBitmap(croppedBitmap);
                                     mPreviewText.setVisibility(View.GONE);
                                     mPreviewImage.setVisibility(View.GONE);
                                     mTextureView.setVisibility(View.VISIBLE);
-                                    mPreviewHalf.setVisibility(View.VISIBLE);
-                                    mPreviewHalf.setVisibility(View.VISIBLE);
-                                    Log.i(TAG, "fromHere x: " + mPreviewHalf.getMaxWidth());
-                                    Log.i(TAG, "fromHere y: " + mPreviewHalf.getMaxHeight());
-                                    final int fromHere = (int) (toBeCropped.getHeight() * 0.2);
-                                    Bitmap croppedBitmap = Bitmap.createBitmap(
-                                            toBeCropped, 0,
-                                            (int) (toBeCropped.getHeight() * 0.8), toBeCropped.getWidth(),
-                                            fromHere);
-                                    mPreviewHalf.setImageBitmap(croppedBitmap);
+                                    mButtonSnap.setVisibility(View.VISIBLE);
+                                    mButtonAdd.setVisibility(View.INVISIBLE);
+                                    mButtonRetake.setVisibility(View.INVISIBLE);
+                                    mCloseButton.setVisibility(View.VISIBLE);
                                 }
                             });
-
                         }
                     });
-//                    closeCamera();
-//                    stopBackgroundThread();
                 }
             };
 
@@ -993,18 +1011,22 @@ public class Camera2BasicFragment extends Fragment
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
-            case R.id.picture: {
+            case R.id.snap_picture: {
                 takePicture();
                 break;
             }
-            case R.id.info: {
-                Activity activity = getActivity();
-                if (null != activity) {
-                    new AlertDialog.Builder(activity)
-                            .setMessage(R.string.intro_message)
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
-                }
+            case R.id.retake_picture: {
+                // todo remove previous image instance, open camera
+                Toast.makeText(getActivity(), "Retake picture", Toast.LENGTH_SHORT).show();
+                break;
+            }
+            case R.id.btn_check: {
+                // todo save images in this instance, close activity
+                getActivity().onBackPressed();
+                break;
+            }
+            case R.id.btn_close: {
+                getActivity().onBackPressed();
                 break;
             }
         }

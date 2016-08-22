@@ -216,6 +216,7 @@
     <string name="abc_shareactionprovider_share_with">Share with</string>
     <string name="abc_shareactionprovider_share_with_application">Share with %s</string>
     <string name="abc_toolbar_collapse_description">Collapse</string>
+    <string name="add_picture">Add more picture</string>
     <string name="app_name">Camera2Basic</string>
     <string name="camera_error">This device doesn\'t support Camera2 API.</string>
     <string name="description_info">Info</string>
@@ -229,8 +230,9 @@
         
         
     </string>
-    <string name="picture">Picture</string>
+    <string name="picture">Snap</string>
     <string name="request_permission">This sample needs camera permission.</string>
+    <string name="retake_picture">Retake picture</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <style name="AlertDialog.AppCompat" parent="Base.AlertDialog.AppCompat"/>
     <style name="AlertDialog.AppCompat.Light" parent="Base.AlertDialog.AppCompat.Light"/>
