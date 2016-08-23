@@ -45,6 +45,7 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -64,7 +65,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
 import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 
@@ -936,8 +936,8 @@ public class Camera2BasicFragment extends Fragment
                                     options.inDither = true;
 
                                     // add newly captured image to an array
-                                    mFileArr.add(mFile);
 
+                                    mFileArr.add(mFile);
                                     Bitmap cropImage = BitmapFactory.decodeFile(mFile.getPath(), options);
                                     int heightOffset = (int) (cropImage.getHeight() * CROP_OFFSET_HEIGHT);
                                     final Bitmap croppedBitmap = Bitmap.createBitmap(
@@ -1018,6 +1018,8 @@ public class Camera2BasicFragment extends Fragment
         }
     }
 
+    List<Bitmap> downscaledBitmaps = new ArrayList<>();
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -1030,8 +1032,24 @@ public class Camera2BasicFragment extends Fragment
                 break;
             }
             case R.id.btn_check: {
-                Log.d(TAG, new Gson().toJson(mFileArr));
-                Log.d(TAG, "filearr size: " + mFileArr.size());
+                Log.d(TAG, "btn_check pressed");
+                mFileArr.add(mFile);
+
+                final BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inJustDecodeBounds = false;
+                options.inPreferredConfig = Bitmap.Config.RGB_565;
+                options.inDither = true;
+                options.inSampleSize = 3;
+
+                for (File file : mFileArr) {
+                    Bitmap cropImage = BitmapFactory.decodeFile(file.getPath(), options);
+                    downscaledBitmaps.add(cropImage);
+                }
+                Bitmap combinedBitmap = ImageUtils.combineBitmaps(getActivity(), downscaledBitmaps);
+                Uri savedCombined = ImageUtils.saveImageToLocal(getActivity(), combinedBitmap);
+                if (savedCombined != null) {
+                    Toast.makeText(getActivity(), "savedCombined: " + savedCombined.getPath(), Toast.LENGTH_SHORT).show();
+                }
                 getActivity().onBackPressed();
                 break;
             }
