@@ -34,7 +34,7 @@
             android:visibility="gone"/>
 
         <RelativeLayout
-            android:layout_width="50dp"
+            android:layout_width="30dp"
             android:layout_height="match_parent"
             android:layout_gravity="start"
             android:background="#404285f4"
@@ -49,7 +49,7 @@
         </RelativeLayout>
 
         <RelativeLayout
-            android:layout_width="50dp"
+            android:layout_width="30dp"
             android:layout_height="match_parent"
             android:layout_gravity="end"
             android:background="#404285f4"
@@ -81,18 +81,19 @@
         </RelativeLayout>
 
         <RelativeLayout
+            android:id="@+id/derp"
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:layout_gravity="top">
+            android:background="@drawable/dem_border"
+            android:visibility="gone"
+            android:layout_gravity="top|center">
 
             <ImageView
                 android:id="@+id/iv_preview_half"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:src="@drawable/receipt_half"
-                android:scaleType="centerInside"
-                android:alpha=".5"
-                android:visibility="gone"/>
+                android:scaleType="centerInside" />
 
         </RelativeLayout>
 
@@ -143,6 +144,8 @@
             android:layout_gravity="center_vertical|start"
             android:contentDescription="@string/retake_picture"
             android:padding="20dp"
+            android:textColor="@android:color/white"
+            android:drawableTint="@android:color/white"
             android:text="Retake"
             android:visibility="invisible"
             android:drawableTop="@drawable/ic_action_info" />
@@ -162,6 +165,8 @@
             android:layout_gravity="center_vertical|end"
             android:contentDescription="@string/add_picture"
             android:padding="20dp"
+            android:textColor="@android:color/white"
+            android:drawableTint="@android:color/white"
             android:text="Add"
             android:visibility="invisible"
             android:drawableTop="@drawable/ic_action_info" />

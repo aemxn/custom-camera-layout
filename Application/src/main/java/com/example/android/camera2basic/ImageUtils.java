@@ -65,20 +65,25 @@ public class ImageUtils {
 
     public static Bitmap combineBitmaps(final Context context, List<Bitmap> bitmaps) {
 
-        Log.d(TAG, "combineBitmaps");
-
         if (bitmaps == null || bitmaps.size() == 0) {
             return null;
         }
         int width = 0;
         int height = 0;
 
-
+        int j = 1;
         for (Bitmap bitmap : bitmaps) {
-            height += bitmap.getHeight();
+            double heightOffset;
+            if (j != bitmaps.size()) {
+                heightOffset = 0.8;
+            } else {
+                heightOffset = 1; // last item full height
+            }
+            height += bitmap.getHeight() * heightOffset;
             if (bitmap.getWidth() > width) {
                 width = bitmap.getWidth();
             }
+            j++;
         }
 
         Bitmap cs = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -89,12 +94,27 @@ public class ImageUtils {
         comboImage.drawPaint(myPaint);
         int positionY = 0;
 
+        int i = 1;
         for (Bitmap bitmap : bitmaps) {
-            comboImage.drawBitmap(bitmap, 0, positionY, null);
-            positionY += bitmap.getHeight();
-
+            Bitmap crop;
+            if (i != bitmaps.size()) {
+                crop = cropBottomPortionBitmap(bitmap);
+            } else {
+                crop = bitmap; // last item no crop
+            }
+            comboImage.drawBitmap(crop, 0, positionY, null);
+            positionY += crop.getHeight();
+            i++;
         }
         return cs;
+    }
+
+    private static Bitmap cropBottomPortionBitmap(Bitmap bitmap) {
+        // x, y, w, h
+        return Bitmap.createBitmap(
+                bitmap,
+                0, 0,
+                bitmap.getWidth(), (int) (bitmap.getHeight() * 0.8));
     }
 
     public static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {

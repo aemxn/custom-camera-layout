@@ -62,6 +62,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -87,7 +88,7 @@ public class Camera2BasicFragment extends Fragment
      * Conversion from screen rotation to JPEG orientation.
      */
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    private static final int REQUEST_CAMERA_PERMISSION = 1;
+    private static final int REQUEST_ALL_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
 
     static {
@@ -190,6 +191,7 @@ public class Camera2BasicFragment extends Fragment
     private ImageView mCheckButton;
     private ImageView mPreviewImage;
     private ImageView mPreviewHalf;
+    private RelativeLayout derp;
     private Button mButtonSnap;
     private Button mButtonAdd;
     private Button mButtonRetake;
@@ -458,6 +460,7 @@ public class Camera2BasicFragment extends Fragment
         mCheckButton = (ImageView) view.findViewById(R.id.btn_check);
         mPreviewImage = (ImageView) view.findViewById(R.id.iv_preview);
         mPreviewHalf = (ImageView) view.findViewById(R.id.iv_preview_half);
+        derp = (RelativeLayout) view.findViewById(R.id.derp);
         mButtonSnap = (Button) view.findViewById(R.id.snap_picture);
         mButtonAdd = (Button) view.findViewById(R.id.add_picture);
         mButtonRetake = (Button) view.findViewById(R.id.retake_picture);
@@ -501,20 +504,22 @@ public class Camera2BasicFragment extends Fragment
         super.onPause();
     }
 
-    private void requestCameraPermission() {
-        if (FragmentCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
+    private void requestPermission() {
+        if (FragmentCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA) ||
+                FragmentCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
             new ConfirmationDialog().show(getChildFragmentManager(), FRAGMENT_DIALOG);
         } else {
-            FragmentCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CAMERA_PERMISSION);
+            FragmentCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQUEST_ALL_PERMISSION);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults.length != 1 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == REQUEST_ALL_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            } else {
                 ErrorDialog.newInstance(getString(R.string.request_permission))
                         .show(getChildFragmentManager(), FRAGMENT_DIALOG);
             }
@@ -646,9 +651,9 @@ public class Camera2BasicFragment extends Fragment
      * Opens the camera specified by {@link Camera2BasicFragment#mCameraId}.
      */
     private void openCamera(int width, int height) {
-        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestCameraPermission();
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermission();
             return;
         }
         setUpCameraOutputs(width, height);
@@ -923,11 +928,12 @@ public class Camera2BasicFragment extends Fragment
                                             .centerInside()
                                             .into(mPreviewImage);
                                 }
-                            }, 500);
+                            }, 300);
 
                             mButtonAdd.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
+                                    derp.setVisibility(View.VISIBLE);
                                     mPreviewHalf.setVisibility(View.VISIBLE);
                                     // optimizing cropImage image loading
                                     final BitmapFactory.Options options = new BitmapFactory.Options();
@@ -941,9 +947,9 @@ public class Camera2BasicFragment extends Fragment
                                     Bitmap cropImage = BitmapFactory.decodeFile(mFile.getPath(), options);
                                     int heightOffset = (int) (cropImage.getHeight() * CROP_OFFSET_HEIGHT);
                                     final Bitmap croppedBitmap = Bitmap.createBitmap(
-                                            cropImage, 0,
-                                            (int) (cropImage.getHeight() * CROP_OFFSET_Y), cropImage.getWidth(),
-                                            heightOffset);
+                                            cropImage,
+                                            0, (int) (cropImage.getHeight() * CROP_OFFSET_Y),
+                                            cropImage.getWidth(), heightOffset);
                                     mPreviewHalf.setImageBitmap(croppedBitmap);
                                     // re-init snap layout (with bottom-half preview)
                                     initSnapLayout();
@@ -1033,7 +1039,9 @@ public class Camera2BasicFragment extends Fragment
             }
             case R.id.btn_check: {
                 Log.d(TAG, "btn_check pressed");
-                mFileArr.add(mFile);
+
+                if (mFile.exists())
+                    mFileArr.add(mFile);
 
                 final BitmapFactory.Options options = new BitmapFactory.Options();
                 options.inJustDecodeBounds = false;
@@ -1062,8 +1070,8 @@ public class Camera2BasicFragment extends Fragment
 
     private void setAutoFlash(CaptureRequest.Builder requestBuilder) {
         if (mFlashSupported) {
-            requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
-                    CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+//            requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+//                    CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
         }
     }
 
@@ -1171,7 +1179,7 @@ public class Camera2BasicFragment extends Fragment
                         public void onClick(DialogInterface dialog, int which) {
                             FragmentCompat.requestPermissions(parent,
                                     new String[]{Manifest.permission.CAMERA},
-                                    REQUEST_CAMERA_PERMISSION);
+                                    REQUEST_ALL_PERMISSION);
                         }
                     })
                     .setNegativeButton(android.R.string.cancel,
